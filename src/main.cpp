@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "raylib.h"
 
 enum struct TileKind {
@@ -61,7 +62,9 @@ static void delete_neighbours(TileKind tiles[playfield_size][playfield_size], in
     }
 }
 
-static void update_playfield(TileKind tiles[playfield_size][playfield_size]) {
+static int update_playfield(TileKind tiles[playfield_size][playfield_size]) {
+    auto points = 0;
+
     bool outer_done;
     do {
         bool done;
@@ -81,6 +84,8 @@ static void update_playfield(TileKind tiles[playfield_size][playfield_size]) {
 
                         if(count >= 3) {
                             delete_neighbours(tiles, x, y, kind);
+
+                            points += count;
 
                             done = false;
                         }
@@ -116,6 +121,8 @@ static void update_playfield(TileKind tiles[playfield_size][playfield_size]) {
             }
         }
     } while(!outer_done);
+
+    return points;
 }
 
 int main(int argument_count, const char *arguments[]) {
@@ -139,6 +146,8 @@ int main(int argument_count, const char *arguments[]) {
     auto tile_selected = false;
     int selected_tile_x;
     int selected_tile_y;
+
+    auto points = 0;
 
     while(!WindowShouldClose()) {
         const auto tile_size = 32;
@@ -169,7 +178,7 @@ int main(int argument_count, const char *arguments[]) {
                         tiles[selected_tile_y][selected_tile_x] = tiles[tile_y][tile_x];
                         tiles[tile_y][tile_x] = selected_old;
 
-                        update_playfield(tiles);
+                        points += update_playfield(tiles);
 
                         tile_selected = false;
                     } else {
@@ -221,6 +230,11 @@ int main(int argument_count, const char *arguments[]) {
                 }
             }
         }
+
+        char buffer[128];
+        snprintf(buffer, 128, "Points: %d", points);
+
+        DrawText(buffer, 100, 100, 20, DARKGRAY);
 
         EndDrawing();
     }
