@@ -62,69 +62,6 @@ static void delete_neighbours(TileKind tiles[playfield_size][playfield_size], in
     }
 }
 
-static int update_playfield(TileKind tiles[playfield_size][playfield_size]) {
-    auto points = 0;
-
-    bool outer_done;
-    do {
-        bool done;
-        do {
-            done = true;
-
-            for(auto reverse_y = 0; reverse_y < playfield_size; reverse_y += 1) {
-                auto y = playfield_size - 1 - reverse_y;
-
-                for(auto x = 0; x < playfield_size; x += 1) {
-                    auto kind = tiles[y][x];
-
-                    if(kind != TileKind::None) {
-                        bool counted[playfield_size][playfield_size] {};
-
-                        auto count = count_neighbours(tiles, counted, x, y, kind);
-
-                        if(count >= 3) {
-                            delete_neighbours(tiles, x, y, kind);
-
-                            points += count;
-
-                            done = false;
-                        }
-                    }
-                }
-            }
-
-            for(auto x = 0; x < playfield_size; x += 1) {
-                for(auto x = 0; x < playfield_size; x += 1) {
-                    for(auto offset_y = 0; offset_y < playfield_size - 1; offset_y += 1) {
-                        auto y = playfield_size - 1 - offset_y;
-
-                        if(tiles[y][x] == TileKind::None && tiles[y - 1][x] != TileKind::None) {
-                            tiles[y][x] = tiles[y - 1][x];
-                            tiles[y - 1][x] = TileKind::None;
-
-                            done = false;
-                        }
-                    }
-                }
-            }
-        } while(!done);
-
-        outer_done = true;
-
-        for(auto y = 0; y < playfield_size; y += 1) {
-            for(auto x = 0; x < playfield_size; x += 1) {
-                if(tiles[y][x] == TileKind::None) {
-                    tiles[y][x] = (TileKind)GetRandomValue(1, 6);
-
-                    outer_done = false;
-                }
-            }
-        }
-    } while(!outer_done);
-
-    return points;
-}
-
 int main(int argument_count, const char *arguments[]) {
     const auto window_width = 1280;
     const auto window_height = 720;
@@ -140,8 +77,6 @@ int main(int argument_count, const char *arguments[]) {
             tiles[y][x] = (TileKind)GetRandomValue(1, 6);
         }
     }
-
-    update_playfield(tiles);
 
     auto tile_selected = false;
     int selected_tile_x;
@@ -173,12 +108,46 @@ int main(int argument_count, const char *arguments[]) {
                         (tile_y == selected_tile_y && abs(tile_x - selected_tile_x) == 1) ||
                         (tile_x == selected_tile_x && abs(tile_y - selected_tile_y) == 1)
                     ) {
-                        auto selected_old = tiles[selected_tile_y][selected_tile_x];
+                        auto selected_tile_type = tiles[selected_tile_y][selected_tile_x];
 
                         tiles[selected_tile_y][selected_tile_x] = tiles[tile_y][tile_x];
-                        tiles[tile_y][tile_x] = selected_old;
+                        tiles[tile_y][tile_x] = selected_tile_type;
 
-                        points += update_playfield(tiles);
+                        bool counted[playfield_size][playfield_size] {};
+
+                        auto count = count_neighbours(tiles, counted, tile_x, tile_y, selected_tile_type);
+
+                        if(count >= 3) {
+                            points += count;
+
+                            delete_neighbours(tiles, tile_x, tile_y, selected_tile_type);
+
+                            bool done;
+                            do {
+                                done = true;
+
+                                for(auto x = 0; x < playfield_size; x += 1) {
+                                    for(auto offset_y = 0; offset_y < playfield_size - 1; offset_y += 1) {
+                                        auto y = playfield_size - 1 - offset_y;
+
+                                        if(tiles[y][x] == TileKind::None && tiles[y - 1][x] != TileKind::None) {
+                                            tiles[y][x] = tiles[y - 1][x];
+                                            tiles[y - 1][x] = TileKind::None;
+
+                                            done = false;
+                                        }
+                                    }
+                                }
+                            } while(!done);
+
+                            for(auto y = 0; y < playfield_size; y += 1) {
+                                for(auto x = 0; x < playfield_size; x += 1) {
+                                    if(tiles[y][x] == TileKind::None) {
+                                        tiles[y][x] = (TileKind)GetRandomValue(1, 6);
+                                    }
+                                }
+                            }
+                        }
 
                         tile_selected = false;
                     } else {
