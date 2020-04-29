@@ -105,19 +105,35 @@ int main(int argument_count, const char *arguments[]) {
 
             if(swap_progress >= 1) {
                 auto from_tile_type = tiles[swapping_from_y][swapping_from_x];
+                auto to_tile_type = tiles[swapping_to_y][swapping_to_x];
 
-                tiles[swapping_from_y][swapping_from_x] = tiles[swapping_to_y][swapping_to_x];
+                tiles[swapping_from_y][swapping_from_x] = to_tile_type;
                 tiles[swapping_to_y][swapping_to_x] = from_tile_type;
 
                 bool counted[playfield_size][playfield_size] {};
 
-                auto count = count_neighbours(tiles, counted, swapping_to_x, swapping_to_y, from_tile_type);
+                auto to_count = count_neighbours(tiles, counted, swapping_to_x, swapping_to_y, from_tile_type);
 
-                if(count >= 3) {
-                    points += count;
+                auto completed_groups = false;
+                if(to_count >= 3) {
+                    points += to_count;
 
                     delete_neighbours(tiles, swapping_to_x, swapping_to_y, from_tile_type);
 
+                    completed_groups = true;
+                }
+
+                auto from_count = count_neighbours(tiles, counted, swapping_from_x, swapping_from_y, to_tile_type);
+
+                if(from_count >= 3) {
+                    points += from_count;
+
+                    delete_neighbours(tiles, swapping_from_x, swapping_from_y, to_tile_type);
+
+                    completed_groups = true;
+                }
+
+                if(completed_groups) {
                     bool done;
                     do {
                         done = true;
