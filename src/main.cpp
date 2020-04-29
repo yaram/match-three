@@ -136,7 +136,56 @@ int main(int argument_count, const char *arguments[]) {
 
     update_playfield(tiles);
 
+    auto tile_selected = false;
+    int selected_tile_x;
+    int selected_tile_y;
+
     while(!WindowShouldClose()) {
+        const auto tile_size = 32;
+
+        auto mouse_x = GetMouseX();
+        auto mouse_y = GetMouseY();
+
+        if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            if(
+                mouse_x >= window_width / 2 - playfield_size * tile_size / 2 &&
+                mouse_y >= window_height / 2 - playfield_size * tile_size / 2 &&
+                mouse_x < window_width / 2 + playfield_size * tile_size / 2 &&
+                mouse_y < window_height / 2 + playfield_size * tile_size / 2
+            ) {
+                auto relative_mouse_x = mouse_x - (window_width / 2 - playfield_size * tile_size / 2);
+                auto relative_mouse_y = mouse_y - (window_height / 2 - playfield_size * tile_size / 2);
+
+                auto tile_x = (int)((float)relative_mouse_x / tile_size);
+                auto tile_y = (int)((float)relative_mouse_y / tile_size);
+
+                if(tile_selected) {
+                    if(
+                        (tile_y == selected_tile_y && abs(tile_x - selected_tile_x) == 1) ||
+                        (tile_x == selected_tile_x && abs(tile_y - selected_tile_y) == 1)
+                    ) {
+                        auto selected_old = tiles[selected_tile_y][selected_tile_x];
+
+                        tiles[selected_tile_y][selected_tile_x] = tiles[tile_y][tile_x];
+                        tiles[tile_y][tile_x] = selected_old;
+
+                        update_playfield(tiles);
+
+                        tile_selected = false;
+                    } else {
+                        selected_tile_x = tile_x;
+                        selected_tile_y = tile_y;
+                    }
+                } else {
+                    tile_selected = true;
+                    selected_tile_x = tile_x;
+                    selected_tile_y = tile_y;
+                }
+            } else {
+                tile_selected = false;
+            }
+        }
+
         BeginDrawing();
 
         ClearBackground(WHITE);
@@ -157,15 +206,18 @@ int main(int argument_count, const char *arguments[]) {
                         default: abort();
                     }
 
-                    const auto tile_size = 32;
-
-                    DrawRectangle(
+                    Rectangle rectangle {
                         window_width / 2 - playfield_size * tile_size / 2 + x * tile_size,
                         window_height / 2 - playfield_size * tile_size / 2 + y * tile_size,
                         tile_size,
-                        tile_size,
-                        color
-                    );
+                        tile_size
+                    };
+
+                    DrawRectangleRec(rectangle, color);
+
+                    if(tile_selected && x == selected_tile_x && y == selected_tile_y) {
+                        DrawRectangleLinesEx(rectangle, 2, DARKGRAY);
+                    }
                 }
             }
         }
