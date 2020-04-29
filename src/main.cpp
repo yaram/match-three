@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include "raylib.h"
 
 enum struct TileKind {
@@ -82,6 +83,15 @@ int main(int argument_count, const char *arguments[]) {
     int selected_tile_x;
     int selected_tile_y;
 
+    const auto swap_time = 0.2f;
+
+    auto swapping = false;
+    int swapping_from_x;
+    int swapping_from_y;
+    int swapping_to_x;
+    int swapping_to_y;
+    float swapping_start_time;
+
     auto points = 0;
 
     while(!WindowShouldClose()) {
@@ -90,7 +100,56 @@ int main(int argument_count, const char *arguments[]) {
         auto mouse_x = GetMouseX();
         auto mouse_y = GetMouseY();
 
-        if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        if(swapping) {
+            auto swap_progress = (GetTime() - swapping_start_time) / swap_time;
+
+            if(swap_progress >= 1) {
+                auto from_tile_type = tiles[swapping_from_y][swapping_from_x];
+
+                tiles[swapping_from_y][swapping_from_x] = tiles[swapping_to_y][swapping_to_x];
+                tiles[swapping_to_y][swapping_to_x] = from_tile_type;
+
+                bool counted[playfield_size][playfield_size] {};
+
+                auto count = count_neighbours(tiles, counted, swapping_to_x, swapping_to_y, from_tile_type);
+
+                if(count >= 3) {
+                    points += count;
+
+                    delete_neighbours(tiles, swapping_to_x, swapping_to_y, from_tile_type);
+
+                    bool done;
+                    do {
+                        done = true;
+
+                        for(auto x = 0; x < playfield_size; x += 1) {
+                            for(auto offset_y = 0; offset_y < playfield_size - 1; offset_y += 1) {
+                                auto y = playfield_size - 1 - offset_y;
+
+                                if(tiles[y][x] == TileKind::None && tiles[y - 1][x] != TileKind::None) {
+                                    tiles[y][x] = tiles[y - 1][x];
+                                    tiles[y - 1][x] = TileKind::None;
+
+                                    done = false;
+                                }
+                            }
+                        }
+                    } while(!done);
+
+                    for(auto y = 0; y < playfield_size; y += 1) {
+                        for(auto x = 0; x < playfield_size; x += 1) {
+                            if(tiles[y][x] == TileKind::None) {
+                                tiles[y][x] = (TileKind)GetRandomValue(1, 6);
+                            }
+                        }
+                    }
+                }
+
+                swapping = false;
+            }
+        }
+
+        if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !swapping) {
             if(
                 mouse_x >= window_width / 2 - playfield_size * tile_size / 2 &&
                 mouse_y >= window_height / 2 - playfield_size * tile_size / 2 &&
@@ -108,48 +167,14 @@ int main(int argument_count, const char *arguments[]) {
                         (tile_y == selected_tile_y && abs(tile_x - selected_tile_x) == 1) ||
                         (tile_x == selected_tile_x && abs(tile_y - selected_tile_y) == 1)
                     ) {
-                        auto selected_tile_type = tiles[selected_tile_y][selected_tile_x];
-
-                        tiles[selected_tile_y][selected_tile_x] = tiles[tile_y][tile_x];
-                        tiles[tile_y][tile_x] = selected_tile_type;
-
-                        bool counted[playfield_size][playfield_size] {};
-
-                        auto count = count_neighbours(tiles, counted, tile_x, tile_y, selected_tile_type);
-
-                        if(count >= 3) {
-                            points += count;
-
-                            delete_neighbours(tiles, tile_x, tile_y, selected_tile_type);
-
-                            bool done;
-                            do {
-                                done = true;
-
-                                for(auto x = 0; x < playfield_size; x += 1) {
-                                    for(auto offset_y = 0; offset_y < playfield_size - 1; offset_y += 1) {
-                                        auto y = playfield_size - 1 - offset_y;
-
-                                        if(tiles[y][x] == TileKind::None && tiles[y - 1][x] != TileKind::None) {
-                                            tiles[y][x] = tiles[y - 1][x];
-                                            tiles[y - 1][x] = TileKind::None;
-
-                                            done = false;
-                                        }
-                                    }
-                                }
-                            } while(!done);
-
-                            for(auto y = 0; y < playfield_size; y += 1) {
-                                for(auto x = 0; x < playfield_size; x += 1) {
-                                    if(tiles[y][x] == TileKind::None) {
-                                        tiles[y][x] = (TileKind)GetRandomValue(1, 6);
-                                    }
-                                }
-                            }
-                        }
-
                         tile_selected = false;
+
+                        swapping = true;
+                        swapping_from_x = selected_tile_x;
+                        swapping_from_y = selected_tile_y;
+                        swapping_to_x = tile_x;
+                        swapping_to_y = tile_y;
+                        swapping_start_time = GetTime();
                     } else {
                         selected_tile_x = tile_x;
                         selected_tile_y = tile_y;
@@ -192,11 +217,22 @@ int main(int argument_count, const char *arguments[]) {
                     };
 
                     const auto inset = 2;
-
                     Rectangle inner_rectangle {
                         rectangle.x + inset, rectangle.y + inset,
                         rectangle.width - inset * 2, rectangle.height - inset * 2
                     };
+
+                    if(swapping) {
+                        auto swap_progress = (GetTime() - swapping_start_time) / swap_time;
+
+                        if(x == swapping_from_x && y == swapping_from_y) {
+                            inner_rectangle.x = rectangle.x + (swapping_to_x - x) * swap_progress * tile_size + inset;
+                            inner_rectangle.y = rectangle.y + (swapping_to_y - y) * swap_progress * tile_size + inset;
+                        } else if(x == swapping_to_x && y == swapping_to_y) {
+                            inner_rectangle.x = rectangle.x + (swapping_from_x - x) * swap_progress * tile_size + inset;
+                            inner_rectangle.y = rectangle.y + (swapping_from_y - y) * swap_progress * tile_size + inset;
+                        }
+                    }
 
                     DrawRectangleRec(inner_rectangle, color);
 
