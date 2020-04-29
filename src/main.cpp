@@ -166,7 +166,7 @@ int main(int argument_count, const char *arguments[]) {
 
         BeginDrawing();
 
-        ClearBackground(WHITE);
+        ClearBackground(RAYWHITE);
 
         for(auto y = 0; y < playfield_size; y += 1) {
             for(auto x = 0; x < playfield_size; x += 1) {
@@ -191,7 +191,14 @@ int main(int argument_count, const char *arguments[]) {
                         tile_size
                     };
 
-                    DrawRectangleRec(rectangle, color);
+                    const auto inset = 2;
+
+                    Rectangle inner_rectangle {
+                        rectangle.x + inset, rectangle.y + inset,
+                        rectangle.width - inset * 2, rectangle.height - inset * 2
+                    };
+
+                    DrawRectangleRec(inner_rectangle, color);
 
                     if(tile_selected && x == selected_tile_x && y == selected_tile_y) {
                         DrawRectangleLinesEx(rectangle, 2, DARKGRAY);
