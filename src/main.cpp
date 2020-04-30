@@ -55,10 +55,61 @@ static void delete_neighbours(int tiles[playfield_size][playfield_size], int x, 
     }
 }
 
-int main(int argument_count, const char *arguments[]) {
-    const auto window_width = 1280;
-    const auto window_height = 720;
+static int min(int a, int b) {
+    if(a > b) {
+        return b;
+    } else {
+        return a;
+    }
+}
 
+static int max(int a, int b) {
+    if(a < b) {
+        return b;
+    } else {
+        return a;
+    }
+}
+
+const auto window_width = 1280;
+const auto window_height = 720;
+
+const auto tile_size = 32;
+
+static void screen_to_tile(int x, int y, int *tile_x, int *tile_y) {
+    auto relative_x = x - window_width / 2 + playfield_size * tile_size / 2;
+    auto relative_y = y - window_height / 2 + playfield_size * tile_size / 2;
+
+    *tile_x = (int)floorf((float)relative_x / tile_size);
+    *tile_y = (int)floorf((float)relative_y / tile_size);
+}
+
+static void tile_to_screen(int tile_x, int tile_y, int *x, int *y) {
+    auto relative_x = tile_x * tile_size;
+    auto relative_y = tile_y * tile_size;
+
+    *x = window_width / 2 - playfield_size * tile_size / 2 + relative_x;
+    *y = window_height / 2 - playfield_size * tile_size / 2 + relative_y;
+}
+
+static void draw_tile_at(int x, int y, int kind) {
+    Color color;
+    switch(kind) {
+        case 1: color = RED; break;
+        case 2: color = GREEN; break;
+        case 3: color = BLUE; break;
+        case 4: color = GOLD; break;
+        case 5: color = SKYBLUE; break;
+        case 6: color = PURPLE; break;
+        default: abort();
+    }
+
+    const auto inset = 2;
+
+    DrawRectangle(x + inset, y + inset, tile_size - inset * 2, tile_size - inset * 2, color);
+}
+
+int main(int argument_count, const char *arguments[]) {
     InitWindow(window_width, window_height, "Match Three");
 
     SetTargetFPS(60);
@@ -71,18 +122,18 @@ int main(int argument_count, const char *arguments[]) {
         }
     }
 
-    auto tile_selected = false;
-    int selected_tile_x;
-    int selected_tile_y;
+    enum struct DragDirection {
+        Horizontal,
+        Vertical
+    };
 
-    const auto swap_time = 0.2f;
-
-    auto swapping = false;
-    int swapping_from_x;
-    int swapping_from_y;
-    int swapping_to_x;
-    int swapping_to_y;
-    float swapping_start_time;
+    auto dragging = false;
+    DragDirection drag_direction;
+    DragDirection next_drag_direction;
+    int drag_start_mouse_x;
+    int drag_start_mouse_y;
+    int drag_start_tile_x;
+    int drag_start_tile_y;
 
     const auto fall_time = 0.2f;
 
@@ -92,56 +143,17 @@ int main(int argument_count, const char *arguments[]) {
     auto points = 0;
 
     while(!WindowShouldClose()) {
-        const auto tile_size = 32;
+        auto time = GetTime();
 
         auto mouse_x = GetMouseX();
         auto mouse_y = GetMouseY();
 
-        if(swapping) {
-            auto swap_progress = (GetTime() - swapping_start_time) / swap_time;
-
-            if(swap_progress >= 1) {
-                auto from_tile_type = tiles[swapping_from_y][swapping_from_x];
-                auto to_tile_type = tiles[swapping_to_y][swapping_to_x];
-
-                tiles[swapping_from_y][swapping_from_x] = to_tile_type;
-                tiles[swapping_to_y][swapping_to_x] = from_tile_type;
-
-                bool counted[playfield_size][playfield_size] {};
-
-                auto to_count = count_neighbours(tiles, counted, swapping_to_x, swapping_to_y, from_tile_type);
-
-                auto completed_groups = false;
-                if(to_count >= 3) {
-                    points += to_count;
-
-                    delete_neighbours(tiles, swapping_to_x, swapping_to_y, from_tile_type);
-
-                    completed_groups = true;
-                }
-
-                auto from_count = count_neighbours(tiles, counted, swapping_from_x, swapping_from_y, to_tile_type);
-
-                if(from_count >= 3) {
-                    points += from_count;
-
-                    delete_neighbours(tiles, swapping_from_x, swapping_from_y, to_tile_type);
-
-                    completed_groups = true;
-                }
-
-                if(completed_groups) {
-                    falling = true;
-                    falling_start_time = GetTime();
-                    
-                }
-
-                swapping = false;
-            }
-        }
+        int mouse_tile_x;
+        int mouse_tile_y;
+        screen_to_tile(mouse_x, mouse_y, &mouse_tile_x, &mouse_tile_y);
 
         if(falling) {
-            auto fall_progress = (GetTime() - falling_start_time) / fall_time;
+            auto fall_progress = (time - falling_start_time) / fall_time;
 
             if(fall_progress >= 1) {
                 bool done;
@@ -174,43 +186,143 @@ int main(int argument_count, const char *arguments[]) {
             }
         }
 
-        if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !swapping && !falling) {
-            if(
-                mouse_x >= window_width / 2 - playfield_size * tile_size / 2 &&
-                mouse_y >= window_height / 2 - playfield_size * tile_size / 2 &&
-                mouse_x < window_width / 2 + playfield_size * tile_size / 2 &&
-                mouse_y < window_height / 2 + playfield_size * tile_size / 2
-            ) {
-                auto relative_mouse_x = mouse_x - (window_width / 2 - playfield_size * tile_size / 2);
-                auto relative_mouse_y = mouse_y - (window_height / 2 - playfield_size * tile_size / 2);
+        if(IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+            dragging = false;
 
-                auto tile_x = (int)((float)relative_mouse_x / tile_size);
-                auto tile_y = (int)((float)relative_mouse_y / tile_size);
+            auto difference_x = mouse_x - drag_start_mouse_x;
+            auto difference_y = mouse_y - drag_start_mouse_y;
 
-                if(tile_selected) {
-                    if(
-                        (tile_y == selected_tile_y && abs(tile_x - selected_tile_x) == 1) ||
-                        (tile_x == selected_tile_x && abs(tile_y - selected_tile_y) == 1)
-                    ) {
-                        tile_selected = false;
+            const auto fuzzy_delta = tile_size / 4;
 
-                        swapping = true;
-                        swapping_from_x = selected_tile_x;
-                        swapping_from_y = selected_tile_y;
-                        swapping_to_x = tile_x;
-                        swapping_to_y = tile_y;
-                        swapping_start_time = GetTime();
+            auto swapping = false;
+            int drag_target_tile_x;
+            int drag_target_tile_y;
+            if(drag_direction == DragDirection::Horizontal) {
+                if(abs(difference_x) >= tile_size - fuzzy_delta) {
+                    swapping = true;
+
+                    if(difference_x > 0) {
+                        drag_target_tile_x = drag_start_tile_x + 1;
                     } else {
-                        selected_tile_x = tile_x;
-                        selected_tile_y = tile_y;
+                        drag_target_tile_x = drag_start_tile_x - 1;
                     }
-                } else {
-                    tile_selected = true;
-                    selected_tile_x = tile_x;
-                    selected_tile_y = tile_y;
+                    drag_target_tile_y = drag_start_tile_y;
+                }
+            } else if(drag_direction == DragDirection::Vertical) {
+                if(abs(difference_y) >= tile_size - fuzzy_delta) {
+                    swapping = true;
+
+                    drag_target_tile_x = drag_start_tile_x;
+                    if(difference_y > 0) {
+                        drag_target_tile_y = drag_start_tile_y + 1;
+                    } else {
+                        drag_target_tile_y = drag_start_tile_y - 1;
+                    }
                 }
             } else {
-                tile_selected = false;
+                abort();
+            }
+
+            if(swapping) {
+                auto from_tile_type = tiles[drag_start_tile_y][drag_start_tile_x];
+                auto to_tile_type = tiles[drag_target_tile_y][drag_target_tile_x];
+
+                tiles[drag_start_tile_y][drag_start_tile_x] = to_tile_type;
+                tiles[drag_target_tile_y][drag_target_tile_x] = from_tile_type;
+
+                bool counted[playfield_size][playfield_size] {};
+
+                auto to_count = count_neighbours(tiles, counted, drag_target_tile_x, drag_target_tile_y, from_tile_type);
+
+                auto completed_groups = false;
+                if(to_count >= 3) {
+                    points += to_count;
+
+                    delete_neighbours(tiles, drag_target_tile_x, drag_target_tile_y, from_tile_type);
+
+                    completed_groups = true;
+                }
+
+                auto from_count = count_neighbours(tiles, counted, drag_start_tile_x, drag_start_tile_y, to_tile_type);
+
+                if(from_count >= 3) {
+                    points += from_count;
+
+                    delete_neighbours(tiles, drag_start_tile_x, drag_start_tile_y, to_tile_type);
+
+                    completed_groups = true;
+                }
+
+                if(completed_groups) {
+                    falling = true;
+                    falling_start_time = time;
+                }
+            }
+        } else if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !dragging && !falling) {
+            if(in_playfield(mouse_tile_x, mouse_tile_y)) {
+                dragging = true;
+                drag_direction = DragDirection::Horizontal;
+                next_drag_direction = DragDirection::Horizontal;
+                drag_start_mouse_x = mouse_x;
+                drag_start_mouse_y = mouse_y;
+                drag_start_tile_x = mouse_tile_x;
+                drag_start_tile_y = mouse_tile_y;
+            }
+        }
+
+        int drag_target_tile_x;
+        int drag_target_tile_y;
+        int drag_offset_screen_x;
+        int drag_offset_screen_y;
+        if(dragging) {
+            auto difference_x = mouse_x - drag_start_mouse_x;
+            auto difference_y = mouse_y - drag_start_mouse_y;
+
+            const auto fuzzy_distance = tile_size / 4;
+
+            auto distance = sqrtf(difference_x * difference_x + difference_y * difference_y);
+
+            if(distance > fuzzy_distance) {
+                if(abs(difference_x) > abs(difference_y)) {
+                    drag_direction = DragDirection::Horizontal;
+                } else {
+                    drag_direction = DragDirection::Vertical;
+                }
+            }
+
+            if(drag_direction == DragDirection::Horizontal) {
+                if(difference_x > 0) {
+                    drag_target_tile_x = drag_start_tile_x + 1;
+
+                } else {
+                    drag_target_tile_x = drag_start_tile_x - 1;
+                }
+                drag_target_tile_y = drag_start_tile_y;
+
+                if(in_playfield(drag_target_tile_x, drag_target_tile_y)) {
+                    drag_offset_screen_x = max(min(difference_x, tile_size), -tile_size);
+                    drag_offset_screen_y = 0;
+                } else {
+                    drag_offset_screen_x = 0;
+                    drag_offset_screen_y = 0;
+                }
+            } else if(drag_direction == DragDirection::Vertical) {
+                drag_target_tile_x = drag_start_tile_x;
+                if(difference_y > 0) {
+                    drag_target_tile_y = drag_start_tile_y + 1;
+                } else {
+                    drag_target_tile_y = drag_start_tile_y - 1;
+                }
+
+                if(in_playfield(drag_target_tile_x, drag_target_tile_y)) {
+                    drag_offset_screen_x = 0;
+                    drag_offset_screen_y = max(min(difference_y, tile_size), -tile_size);
+                } else {
+                    drag_offset_screen_x = 0;
+                    drag_offset_screen_y = 0;
+                }
+            } else {
+                abort();
             }
         }
 
@@ -222,49 +334,25 @@ int main(int argument_count, const char *arguments[]) {
             for(auto x = 0; x < playfield_size; x += 1) {
                 auto tile_kind = tiles[y][x];
 
-                if(tile_kind != 0) {
-                    Color color;
-                    switch(tile_kind) {
-                        case 1: color = RED; break;
-                        case 2: color = GREEN; break;
-                        case 3: color = BLUE; break;
-                        case 4: color = GOLD; break;
-                        case 5: color = SKYBLUE; break;
-                        case 6: color = PURPLE; break;
-                        default: abort();
-                    }
+                if(tile_kind == 0) {
+                    continue;
+                }
 
-                    Rectangle rectangle {
-                        window_width / 2 - playfield_size * tile_size / 2 + x * tile_size,
-                        window_height / 2 - playfield_size * tile_size / 2 + y * tile_size,
-                        tile_size,
-                        tile_size
-                    };
+                int screen_x;
+                int screen_y;
+                tile_to_screen(x, y, &screen_x, &screen_y);
 
-                    const auto inset = 2;
-                    Rectangle inner_rectangle {
-                        rectangle.x + inset, rectangle.y + inset,
-                        rectangle.width - inset * 2, rectangle.height - inset * 2
-                    };
-
-                    if(swapping) {
-                        auto swap_progress = (GetTime() - swapping_start_time) / swap_time;
-
-                        if(x == swapping_from_x && y == swapping_from_y) {
-                            inner_rectangle.x = rectangle.x + (swapping_to_x - x) * swap_progress * tile_size + inset;
-                            inner_rectangle.y = rectangle.y + (swapping_to_y - y) * swap_progress * tile_size + inset;
-                        } else if(x == swapping_to_x && y == swapping_to_y) {
-                            inner_rectangle.x = rectangle.x + (swapping_from_x - x) * swap_progress * tile_size + inset;
-                            inner_rectangle.y = rectangle.y + (swapping_from_y - y) * swap_progress * tile_size + inset;
-                        }
-                    }
-
-                    DrawRectangleRec(inner_rectangle, color);
-
-                    if(tile_selected && x == selected_tile_x && y == selected_tile_y) {
-                        DrawRectangleLinesEx(rectangle, 2, DARKGRAY);
+                if(dragging) {
+                    if(x == drag_start_tile_x && y == drag_start_tile_y) {
+                        screen_x += drag_offset_screen_x;
+                        screen_y += drag_offset_screen_y;
+                    } else if(x == drag_target_tile_x && y == drag_target_tile_y) {
+                        screen_x -= drag_offset_screen_x;
+                        screen_y -= drag_offset_screen_y;
                     }
                 }
+
+                draw_tile_at(screen_x, screen_y, tile_kind);
             }
         }
 
