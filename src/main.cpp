@@ -201,7 +201,7 @@ int main(int argument_count, const char *arguments[]) {
             drag_difference_y = mouse_y - drag_start_mouse_y;
         }
 
-        if(IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+        if(IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && dragging) {
             dragging = false;
 
             const auto fuzzy_delta = tile_size / 4;
