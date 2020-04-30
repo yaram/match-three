@@ -228,7 +228,7 @@ int main(int argument_count, const char *arguments[]) {
                         case 1: color = RED; break;
                         case 2: color = GREEN; break;
                         case 3: color = BLUE; break;
-                        case 4: color = YELLOW; break;
+                        case 4: color = GOLD; break;
                         case 5: color = SKYBLUE; break;
                         case 6: color = PURPLE; break;
                         default: abort();
