@@ -3,15 +3,7 @@
 #include <math.h>
 #include "raylib.h"
 
-enum struct TileKind {
-    None,
-    Red,
-    Green,
-    Blue,
-    Yellow,
-    Cyan,
-    Magenta
-};
+const int tile_kind_count = 6;
 
 const auto playfield_size = 10;
 
@@ -19,7 +11,7 @@ static bool in_playfield(int x, int y) {
     return x >= 0 && y >= 0 && x < playfield_size && y < playfield_size;
 }
 
-static int count_neighbours(const TileKind tiles[playfield_size][playfield_size], bool counted[playfield_size][playfield_size], int x, int y, TileKind kind) {
+static int count_neighbours(const int tiles[playfield_size][playfield_size], bool counted[playfield_size][playfield_size], int x, int y, int kind) {
     counted[y][x] = true;
 
     auto total = 1;
@@ -43,8 +35,8 @@ static int count_neighbours(const TileKind tiles[playfield_size][playfield_size]
     return total;
 }
 
-static void delete_neighbours(TileKind tiles[playfield_size][playfield_size], int x, int y, TileKind kind) {
-    tiles[y][x] = TileKind::None;
+static void delete_neighbours(int tiles[playfield_size][playfield_size], int x, int y, int kind) {
+    tiles[y][x] = 0;
 
     if(in_playfield(x + 1, y) && tiles[y][x + 1] == kind) {
         delete_neighbours(tiles, x + 1, y, kind);
@@ -71,11 +63,11 @@ int main(int argument_count, const char *arguments[]) {
 
     SetTargetFPS(60);
 
-    TileKind tiles[playfield_size][playfield_size] {};
+    int tiles[playfield_size][playfield_size] {};
 
     for(auto y = 0; y < playfield_size; y += 1) {
         for(auto x = 0; x < playfield_size; x += 1) {
-            tiles[y][x] = (TileKind)GetRandomValue(1, 6);
+            tiles[y][x] = GetRandomValue(1, tile_kind_count);
         }
     }
 
@@ -160,9 +152,9 @@ int main(int argument_count, const char *arguments[]) {
                         for(auto offset_y = 0; offset_y < playfield_size - 1; offset_y += 1) {
                             auto y = playfield_size - 1 - offset_y;
 
-                            if(tiles[y][x] == TileKind::None && tiles[y - 1][x] != TileKind::None) {
+                            if(tiles[y][x] == 0 && tiles[y - 1][x] != 0) {
                                 tiles[y][x] = tiles[y - 1][x];
-                                tiles[y - 1][x] = TileKind::None;
+                                tiles[y - 1][x] = 0;
 
                                 done = false;
                             }
@@ -172,8 +164,8 @@ int main(int argument_count, const char *arguments[]) {
 
                 for(auto y = 0; y < playfield_size; y += 1) {
                     for(auto x = 0; x < playfield_size; x += 1) {
-                        if(tiles[y][x] == TileKind::None) {
-                            tiles[y][x] = (TileKind)GetRandomValue(1, 6);
+                        if(tiles[y][x] == 0) {
+                            tiles[y][x] = GetRandomValue(1, tile_kind_count);
                         }
                     }
                 }
@@ -230,15 +222,15 @@ int main(int argument_count, const char *arguments[]) {
             for(auto x = 0; x < playfield_size; x += 1) {
                 auto tile_kind = tiles[y][x];
 
-                if(tile_kind != TileKind::None) {
+                if(tile_kind != 0) {
                     Color color;
                     switch(tile_kind) {
-                        case TileKind::Red: color = RED; break;
-                        case TileKind::Green: color = GREEN; break;
-                        case TileKind::Blue: color = BLUE; break;
-                        case TileKind::Yellow: color = YELLOW; break;
-                        case TileKind::Cyan: color = SKYBLUE; break;
-                        case TileKind::Magenta: color = PURPLE; break;
+                        case 1: color = RED; break;
+                        case 2: color = GREEN; break;
+                        case 3: color = BLUE; break;
+                        case 4: color = YELLOW; break;
+                        case 5: color = SKYBLUE; break;
+                        case 6: color = PURPLE; break;
                         default: abort();
                     }
 
