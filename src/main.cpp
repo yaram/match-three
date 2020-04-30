@@ -92,6 +92,11 @@ int main(int argument_count, const char *arguments[]) {
     int swapping_to_y;
     float swapping_start_time;
 
+    const auto fall_time = 0.2f;
+
+    auto falling = false;
+    float falling_start_time;
+
     auto points = 0;
 
     while(!WindowShouldClose()) {
@@ -134,38 +139,50 @@ int main(int argument_count, const char *arguments[]) {
                 }
 
                 if(completed_groups) {
-                    bool done;
-                    do {
-                        done = true;
-
-                        for(auto x = 0; x < playfield_size; x += 1) {
-                            for(auto offset_y = 0; offset_y < playfield_size - 1; offset_y += 1) {
-                                auto y = playfield_size - 1 - offset_y;
-
-                                if(tiles[y][x] == TileKind::None && tiles[y - 1][x] != TileKind::None) {
-                                    tiles[y][x] = tiles[y - 1][x];
-                                    tiles[y - 1][x] = TileKind::None;
-
-                                    done = false;
-                                }
-                            }
-                        }
-                    } while(!done);
-
-                    for(auto y = 0; y < playfield_size; y += 1) {
-                        for(auto x = 0; x < playfield_size; x += 1) {
-                            if(tiles[y][x] == TileKind::None) {
-                                tiles[y][x] = (TileKind)GetRandomValue(1, 6);
-                            }
-                        }
-                    }
+                    falling = true;
+                    falling_start_time = GetTime();
+                    
                 }
 
                 swapping = false;
             }
         }
 
-        if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !swapping) {
+        if(falling) {
+            auto fall_progress = (GetTime() - falling_start_time) / fall_time;
+
+            if(fall_progress >= 1) {
+                bool done;
+                do {
+                    done = true;
+
+                    for(auto x = 0; x < playfield_size; x += 1) {
+                        for(auto offset_y = 0; offset_y < playfield_size - 1; offset_y += 1) {
+                            auto y = playfield_size - 1 - offset_y;
+
+                            if(tiles[y][x] == TileKind::None && tiles[y - 1][x] != TileKind::None) {
+                                tiles[y][x] = tiles[y - 1][x];
+                                tiles[y - 1][x] = TileKind::None;
+
+                                done = false;
+                            }
+                        }
+                    }
+                } while(!done);
+
+                for(auto y = 0; y < playfield_size; y += 1) {
+                    for(auto x = 0; x < playfield_size; x += 1) {
+                        if(tiles[y][x] == TileKind::None) {
+                            tiles[y][x] = (TileKind)GetRandomValue(1, 6);
+                        }
+                    }
+                }
+
+                falling = false;
+            }
+        }
+
+        if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !swapping && !falling) {
             if(
                 mouse_x >= window_width / 2 - playfield_size * tile_size / 2 &&
                 mouse_y >= window_height / 2 - playfield_size * tile_size / 2 &&
