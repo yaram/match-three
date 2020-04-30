@@ -122,14 +122,7 @@ int main(int argument_count, const char *arguments[]) {
         }
     }
 
-    enum struct DragDirection {
-        Horizontal,
-        Vertical
-    };
-
     auto dragging = false;
-    DragDirection drag_direction;
-    DragDirection next_drag_direction;
     int drag_start_mouse_x;
     int drag_start_mouse_y;
     int drag_start_tile_x;
@@ -186,11 +179,37 @@ int main(int argument_count, const char *arguments[]) {
             }
         }
 
+        if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !dragging && !falling) {
+            if(in_playfield(mouse_tile_x, mouse_tile_y)) {
+                dragging = true;
+                drag_start_mouse_x = mouse_x;
+                drag_start_mouse_y = mouse_y;
+                drag_start_tile_x = mouse_tile_x;
+                drag_start_tile_y = mouse_tile_y;
+            }
+        }
+
+        enum struct DragDirection {
+            Horizontal,
+            Vertical
+        };
+
+        int drag_difference_x;
+        int drag_difference_y;
+        DragDirection drag_direction;
+        if(dragging) {
+            drag_difference_x = mouse_x - drag_start_mouse_x;
+            drag_difference_y = mouse_y - drag_start_mouse_y;
+
+            if(abs(drag_difference_x) > abs(drag_difference_y)) {
+                drag_direction = DragDirection::Horizontal;
+            } else {
+                drag_direction = DragDirection::Vertical;
+            }
+        }
+
         if(IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
             dragging = false;
-
-            auto difference_x = mouse_x - drag_start_mouse_x;
-            auto difference_y = mouse_y - drag_start_mouse_y;
 
             const auto fuzzy_delta = tile_size / 4;
 
@@ -198,10 +217,10 @@ int main(int argument_count, const char *arguments[]) {
             int drag_target_tile_x;
             int drag_target_tile_y;
             if(drag_direction == DragDirection::Horizontal) {
-                if(abs(difference_x) >= tile_size - fuzzy_delta) {
+                if(abs(drag_difference_x) >= tile_size - fuzzy_delta) {
                     swapping = true;
 
-                    if(difference_x > 0) {
+                    if(drag_difference_x > 0) {
                         drag_target_tile_x = drag_start_tile_x + 1;
                     } else {
                         drag_target_tile_x = drag_start_tile_x - 1;
@@ -209,11 +228,11 @@ int main(int argument_count, const char *arguments[]) {
                     drag_target_tile_y = drag_start_tile_y;
                 }
             } else if(drag_direction == DragDirection::Vertical) {
-                if(abs(difference_y) >= tile_size - fuzzy_delta) {
+                if(abs(drag_difference_y) >= tile_size - fuzzy_delta) {
                     swapping = true;
 
                     drag_target_tile_x = drag_start_tile_x;
-                    if(difference_y > 0) {
+                    if(drag_difference_y > 0) {
                         drag_target_tile_y = drag_start_tile_y + 1;
                     } else {
                         drag_target_tile_y = drag_start_tile_y - 1;
@@ -258,16 +277,6 @@ int main(int argument_count, const char *arguments[]) {
                     falling_start_time = time;
                 }
             }
-        } else if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !dragging && !falling) {
-            if(in_playfield(mouse_tile_x, mouse_tile_y)) {
-                dragging = true;
-                drag_direction = DragDirection::Horizontal;
-                next_drag_direction = DragDirection::Horizontal;
-                drag_start_mouse_x = mouse_x;
-                drag_start_mouse_y = mouse_y;
-                drag_start_tile_x = mouse_tile_x;
-                drag_start_tile_y = mouse_tile_y;
-            }
         }
 
         int drag_target_tile_x;
@@ -275,23 +284,8 @@ int main(int argument_count, const char *arguments[]) {
         int drag_offset_screen_x;
         int drag_offset_screen_y;
         if(dragging) {
-            auto difference_x = mouse_x - drag_start_mouse_x;
-            auto difference_y = mouse_y - drag_start_mouse_y;
-
-            const auto fuzzy_distance = tile_size / 4;
-
-            auto distance = sqrtf(difference_x * difference_x + difference_y * difference_y);
-
-            if(distance > fuzzy_distance) {
-                if(abs(difference_x) > abs(difference_y)) {
-                    drag_direction = DragDirection::Horizontal;
-                } else {
-                    drag_direction = DragDirection::Vertical;
-                }
-            }
-
             if(drag_direction == DragDirection::Horizontal) {
-                if(difference_x > 0) {
+                if(drag_difference_x > 0) {
                     drag_target_tile_x = drag_start_tile_x + 1;
 
                 } else {
@@ -300,7 +294,7 @@ int main(int argument_count, const char *arguments[]) {
                 drag_target_tile_y = drag_start_tile_y;
 
                 if(in_playfield(drag_target_tile_x, drag_target_tile_y)) {
-                    drag_offset_screen_x = max(min(difference_x, tile_size), -tile_size);
+                    drag_offset_screen_x = max(min(drag_difference_x, tile_size), -tile_size);
                     drag_offset_screen_y = 0;
                 } else {
                     drag_offset_screen_x = 0;
@@ -308,7 +302,7 @@ int main(int argument_count, const char *arguments[]) {
                 }
             } else if(drag_direction == DragDirection::Vertical) {
                 drag_target_tile_x = drag_start_tile_x;
-                if(difference_y > 0) {
+                if(drag_difference_y > 0) {
                     drag_target_tile_y = drag_start_tile_y + 1;
                 } else {
                     drag_target_tile_y = drag_start_tile_y - 1;
@@ -316,7 +310,7 @@ int main(int argument_count, const char *arguments[]) {
 
                 if(in_playfield(drag_target_tile_x, drag_target_tile_y)) {
                     drag_offset_screen_x = 0;
-                    drag_offset_screen_y = max(min(difference_y, tile_size), -tile_size);
+                    drag_offset_screen_y = max(min(drag_difference_y, tile_size), -tile_size);
                 } else {
                     drag_offset_screen_x = 0;
                     drag_offset_screen_y = 0;
