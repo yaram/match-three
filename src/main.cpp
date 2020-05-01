@@ -353,6 +353,8 @@ int main(int argument_count, const char *arguments[]) {
                 screen_y += drag_offset_screen_y;
 
                 draw_tile_at(screen_x, screen_y, tiles[drag_start_tile_y][drag_start_tile_x]);
+
+                DrawRectangleLinesEx({ (float)screen_x, (float)screen_y, tile_size, tile_size }, tile_inset, DARKGRAY);
             }
         }
 
