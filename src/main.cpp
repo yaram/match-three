@@ -270,7 +270,40 @@ int main(int argument_count, const char *arguments[]) {
         int drag_offset_screen_x;
         int drag_offset_screen_y;
         if(dragging) {
+            bool horizontal;
+
             if(abs(drag_difference_x) > abs(drag_difference_y)) {
+                int target_x;
+                if(drag_difference_x > 0) {
+                    target_x = drag_start_tile_x + 1;
+
+                } else {
+                    target_x = drag_start_tile_x - 1;
+                }
+                auto target_y = drag_start_tile_y;
+
+                if(in_playfield(target_x, target_y)) {
+                    horizontal = true;
+                } else {
+                    horizontal = false;
+                }
+            } else {
+                auto target_x = drag_start_tile_x;
+                int target_y;
+                if(drag_difference_y > 0) {
+                    target_y = drag_start_tile_y + 1;
+                } else {
+                    target_y = drag_start_tile_y - 1;
+                }
+
+                if(in_playfield(target_x, target_y)) {
+                    horizontal = false;
+                } else {
+                    horizontal = true;
+                }
+            }
+
+            if(horizontal) {
                 if(drag_difference_x > 0) {
                     drag_target_tile_x = drag_start_tile_x + 1;
 
@@ -279,13 +312,8 @@ int main(int argument_count, const char *arguments[]) {
                 }
                 drag_target_tile_y = drag_start_tile_y;
 
-                if(in_playfield(drag_target_tile_x, drag_target_tile_y)) {
-                    drag_offset_screen_x = max(min(drag_difference_x, tile_size), -tile_size);
-                    drag_offset_screen_y = 0;
-                } else {
-                    drag_offset_screen_x = 0;
-                    drag_offset_screen_y = 0;
-                }
+                drag_offset_screen_x = max(min(drag_difference_x, tile_size), -tile_size);
+                drag_offset_screen_y = 0;
             } else {
                 drag_target_tile_x = drag_start_tile_x;
                 if(drag_difference_y > 0) {
@@ -294,13 +322,8 @@ int main(int argument_count, const char *arguments[]) {
                     drag_target_tile_y = drag_start_tile_y - 1;
                 }
 
-                if(in_playfield(drag_target_tile_x, drag_target_tile_y)) {
-                    drag_offset_screen_x = 0;
-                    drag_offset_screen_y = max(min(drag_difference_y, tile_size), -tile_size);
-                } else {
-                    drag_offset_screen_x = 0;
-                    drag_offset_screen_y = 0;
-                }
+                drag_offset_screen_x = 0;
+                drag_offset_screen_y = max(min(drag_difference_y, tile_size), -tile_size);
             }
         }
 
@@ -333,7 +356,7 @@ int main(int argument_count, const char *arguments[]) {
         }
 
         if(dragging) {
-            if(in_playfield(drag_target_tile_x, drag_target_tile_y)) {
+            {
                 int screen_x;
                 int screen_y;
                 tile_to_screen(drag_target_tile_x, drag_target_tile_y, &screen_x, &screen_y);
@@ -344,7 +367,7 @@ int main(int argument_count, const char *arguments[]) {
                 draw_tile_at(screen_x, screen_y, tiles[drag_target_tile_y][drag_target_tile_x]);
             }
 
-            if(in_playfield(drag_start_tile_x, drag_start_tile_y)) {
+            {
                 int screen_x;
                 int screen_y;
                 tile_to_screen(drag_start_tile_x, drag_start_tile_y, &screen_x, &screen_y);
