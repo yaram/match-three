@@ -189,11 +189,6 @@ int main(int argument_count, const char *arguments[]) {
             }
         }
 
-        enum struct DragDirection {
-            Horizontal,
-            Vertical
-        };
-
         int drag_difference_x;
         int drag_difference_y;
         if(dragging) {
