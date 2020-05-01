@@ -92,6 +92,8 @@ static void tile_to_screen(int tile_x, int tile_y, int *x, int *y) {
     *y = window_height / 2 - playfield_size * tile_size / 2 + relative_y;
 }
 
+const auto tile_inset = 2;
+
 static void draw_tile_at(int x, int y, int kind) {
     Color color;
     switch(kind) {
@@ -104,9 +106,7 @@ static void draw_tile_at(int x, int y, int kind) {
         default: abort();
     }
 
-    const auto inset = 2;
-
-    DrawRectangle(x + inset, y + inset, tile_size - inset * 2, tile_size - inset * 2, color);
+    DrawRectangle(x + tile_inset, y + tile_inset, tile_size - tile_inset * 2, tile_size - tile_inset * 2, color);
 }
 
 int main(int argument_count, const char *arguments[]) {
@@ -333,7 +333,7 @@ int main(int argument_count, const char *arguments[]) {
         }
 
         if(dragging) {
-            {
+            if(in_playfield(drag_target_tile_x, drag_target_tile_y)) {
                 int screen_x;
                 int screen_y;
                 tile_to_screen(drag_target_tile_x, drag_target_tile_y, &screen_x, &screen_y);
@@ -344,7 +344,7 @@ int main(int argument_count, const char *arguments[]) {
                 draw_tile_at(screen_x, screen_y, tiles[drag_target_tile_y][drag_target_tile_x]);
             }
 
-            {
+            if(in_playfield(drag_start_tile_x, drag_start_tile_y)) {
                 int screen_x;
                 int screen_y;
                 tile_to_screen(drag_start_tile_x, drag_start_tile_y, &screen_x, &screen_y);
