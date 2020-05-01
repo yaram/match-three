@@ -322,15 +322,37 @@ int main(int argument_count, const char *arguments[]) {
 
                 if(dragging) {
                     if(x == drag_start_tile_x && y == drag_start_tile_y) {
-                        screen_x += drag_offset_screen_x;
-                        screen_y += drag_offset_screen_y;
+                        continue;
                     } else if(x == drag_target_tile_x && y == drag_target_tile_y) {
-                        screen_x -= drag_offset_screen_x;
-                        screen_y -= drag_offset_screen_y;
+                        continue;
                     }
                 }
 
                 draw_tile_at(screen_x, screen_y, tile_kind);
+            }
+        }
+
+        if(dragging) {
+            {
+                int screen_x;
+                int screen_y;
+                tile_to_screen(drag_target_tile_x, drag_target_tile_y, &screen_x, &screen_y);
+
+                screen_x -= drag_offset_screen_x;
+                screen_y -= drag_offset_screen_y;
+
+                draw_tile_at(screen_x, screen_y, tiles[drag_target_tile_y][drag_target_tile_x]);
+            }
+
+            {
+                int screen_x;
+                int screen_y;
+                tile_to_screen(drag_start_tile_x, drag_start_tile_y, &screen_x, &screen_y);
+
+                screen_x += drag_offset_screen_x;
+                screen_y += drag_offset_screen_y;
+
+                draw_tile_at(screen_x, screen_y, tiles[drag_start_tile_y][drag_start_tile_x]);
             }
         }
 
