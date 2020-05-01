@@ -228,7 +228,7 @@ int main(int argument_count, const char *arguments[]) {
                 }
             }
 
-            if(swapping) {
+            if(swapping && in_playfield(drag_target_tile_x, drag_target_tile_y)) {
                 auto from_tile_type = tiles[drag_start_tile_y][drag_start_tile_x];
                 auto to_tile_type = tiles[drag_target_tile_y][drag_target_tile_x];
 
