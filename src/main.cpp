@@ -115,7 +115,7 @@ static int max(int a, int b) {
     }
 }
 
-const auto window_width = 1280;
+const auto window_width = 720;
 const auto window_height = 720;
 
 const auto tile_size = 32;
