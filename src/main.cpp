@@ -493,7 +493,11 @@ int main(int argument_count, const char *arguments[]) {
         char buffer[128];
         snprintf(buffer, 128, "Points: %d", points);
 
-        DrawText(buffer, 100, 100, 20, DARKGRAY);
+        const auto font_size = 40;
+
+        auto text_width = MeasureText(buffer, font_size);
+
+        DrawText(buffer, window_width / 2 - text_width / 2, 100, font_size, DARKGRAY);
 
         EndDrawing();
     }
