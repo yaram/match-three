@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "raylib.h"
+#include "list.h"
 
 const int tile_kind_count = 6;
 
@@ -128,15 +129,25 @@ int main(int argument_count, const char *arguments[]) {
     int drag_start_tile_x;
     int drag_start_tile_y;
 
-    const auto fall_time = 0.2f;
+    struct FallingTile {
+        int x;
+
+        int start_y;
+        int end_y;
+
+        int kind;
+    };
 
     auto falling = false;
-    float falling_start_time;
+    List<FallingTile> falling_tiles {};
+    float falling_velocity;
+    float falling_amount;
 
     auto points = 0;
 
     while(!WindowShouldClose()) {
         auto time = GetTime();
+        auto delta_time = GetFrameTime();
 
         auto mouse_x = GetMouseX();
         auto mouse_y = GetMouseY();
@@ -146,35 +157,22 @@ int main(int argument_count, const char *arguments[]) {
         screen_to_tile(mouse_x, mouse_y, &mouse_tile_x, &mouse_tile_y);
 
         if(falling) {
-            auto fall_progress = (time - falling_start_time) / fall_time;
+            falling_velocity += 100.0f * delta_time;
+            falling_amount += falling_velocity * delta_time;
 
-            if(fall_progress >= 1) {
-                bool done;
-                do {
-                    done = true;
+            for(size_t i = 0; i < falling_tiles.count; i += 1) {
+                auto tile = falling_tiles[i];
 
-                    for(auto x = 0; x < playfield_size; x += 1) {
-                        for(auto offset_y = 0; offset_y < playfield_size - 1; offset_y += 1) {
-                            auto y = playfield_size - 1 - offset_y;
+                auto falling_y = tile.start_y + falling_amount;
 
-                            if(tiles[y][x] == 0 && tiles[y - 1][x] != 0) {
-                                tiles[y][x] = tiles[y - 1][x];
-                                tiles[y - 1][x] = 0;
+                if(falling_y >= tile.end_y) {
+                    tiles[tile.end_y][tile.x] = tile.kind;
 
-                                done = false;
-                            }
-                        }
-                    }
-                } while(!done);
-
-                for(auto y = 0; y < playfield_size; y += 1) {
-                    for(auto x = 0; x < playfield_size; x += 1) {
-                        if(tiles[y][x] == 0) {
-                            tiles[y][x] = GetRandomValue(1, tile_kind_count);
-                        }
-                    }
+                    remove_at(&falling_tiles, i);
                 }
+            }
 
+            if(falling_tiles.count == 0) {
                 falling = false;
             }
         }
@@ -260,7 +258,31 @@ int main(int argument_count, const char *arguments[]) {
 
                 if(completed_groups) {
                     falling = true;
-                    falling_start_time = time;
+                    falling_tiles.count = 0;
+                    falling_velocity = 0;
+                    falling_amount = 0;
+
+                    for(auto x = 0; x < playfield_size; x += 1) {
+                        auto space_count = 0;
+
+                        for(auto offset_y = 0; offset_y <= playfield_size - 1; offset_y += 1) {
+                            auto y = playfield_size - 1 - offset_y;
+
+                            auto kind = tiles[y][x];
+
+                            if(kind == 0) {
+                                space_count += 1;
+                            } else if(space_count > 0) {
+                                append(&falling_tiles, { x, y, y + space_count, kind });
+
+                                tiles[y][x] = 0;
+                            }
+                        }
+
+                        for(auto i = 0; i < space_count; i += 1) {
+                            append(&falling_tiles, { x, 0 - space_count + i, i, GetRandomValue(1, tile_kind_count) });
+                        }
+                    }
                 }
             }
         }
@@ -356,7 +378,7 @@ int main(int argument_count, const char *arguments[]) {
         }
 
         if(dragging) {
-            {
+            if(in_playfield(drag_target_tile_x, drag_target_tile_y)) {
                 int screen_x;
                 int screen_y;
                 tile_to_screen(drag_target_tile_x, drag_target_tile_y, &screen_x, &screen_y);
@@ -378,6 +400,18 @@ int main(int argument_count, const char *arguments[]) {
                 draw_tile_at(screen_x, screen_y, tiles[drag_start_tile_y][drag_start_tile_x]);
 
                 DrawRectangleLinesEx({ (float)screen_x, (float)screen_y, tile_size, tile_size }, tile_inset, DARKGRAY);
+            }
+        }
+
+        if(falling) {
+            for(auto tile : falling_tiles) {
+                int screen_x;
+                int screen_y;
+                tile_to_screen(tile.x, tile.start_y, &screen_x, &screen_y);
+
+                screen_y = (int)(screen_y + falling_amount * tile_size);
+
+                draw_tile_at(screen_x, screen_y, tile.kind);
             }
         }
 

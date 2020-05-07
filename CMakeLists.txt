@@ -5,6 +5,8 @@ project(MatchThree C CXX)
 add_subdirectory(thirdparty/raylib)
 
 add_executable(game
+    src/list.h
+
     src/main.cpp
 )
 target_compile_features(game PRIVATE cxx_std_11)
