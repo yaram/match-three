@@ -4,6 +4,10 @@
 #include "raylib.h"
 #include "list.h"
 
+static double RandomUniform() {
+    return (double)rand() / RAND_MAX;
+}
+
 const int tile_kind_count = 6;
 
 const auto playfield_size = 10;
@@ -36,23 +40,62 @@ static int count_neighbours(const int tiles[playfield_size][playfield_size], boo
     return total;
 }
 
-static void delete_neighbours(int tiles[playfield_size][playfield_size], int x, int y, int kind) {
+static Color tile_color(int kind) {
+    switch(kind) {
+        case 1: return RED; break;
+        case 2: return GREEN; break;
+        case 3: return BLUE; break;
+        case 4: return GOLD; break;
+        case 5: return SKYBLUE; break;
+        case 6: return PURPLE; break;
+        default: abort();
+    }
+}
+
+struct Particle {
+    double creation_time;
+    double lifetime;
+
+    Color color;
+
+    float x;
+    float y;
+
+    float velocity_x;
+    float velocity_y;
+};
+
+static void delete_neighbours(int tiles[playfield_size][playfield_size], double time, List<Particle> *particles, int x, int y, int kind) {
     tiles[y][x] = 0;
 
+    for(auto i = 0; i < 3; i += 1) {
+        auto angle = (float)RandomUniform() * PI * 2;
+
+        append(particles, {
+            time,
+            0.3 + RandomUniform() * 0.2,
+            tile_color(kind),
+            x + 0.5f + (float)RandomUniform() * 0.6f - 0.3f,
+            y + 0.5f + (float)RandomUniform() * 0.6f - 0.3f,
+            cosf(angle) * 5,
+            sinf(angle) * 5
+        });
+    }
+
     if(in_playfield(x + 1, y) && tiles[y][x + 1] == kind) {
-        delete_neighbours(tiles, x + 1, y, kind);
+        delete_neighbours(tiles, time, particles, x + 1, y, kind);
     }
 
     if(in_playfield(x, y + 1) && tiles[y + 1][x] == kind) {
-        delete_neighbours(tiles, x, y + 1, kind);
+        delete_neighbours(tiles, time, particles, x, y + 1, kind);
     }
 
     if(in_playfield(x - 1, y) && tiles[y][x - 1] == kind) {
-        delete_neighbours(tiles, x - 1, y, kind);
+        delete_neighbours(tiles, time, particles, x - 1, y, kind);
     }
 
     if(in_playfield(x, y - 1) && tiles[y - 1][x] == kind) {
-        delete_neighbours(tiles, x, y - 1, kind);
+        delete_neighbours(tiles, time, particles, x, y - 1, kind);
     }
 }
 
@@ -77,9 +120,18 @@ const auto window_height = 720;
 
 const auto tile_size = 32;
 
+static void playfield_position(int *x, int *y) {
+    *x = window_width / 2 - playfield_size * tile_size / 2;
+    *y = window_height / 2 - playfield_size * tile_size / 2;
+}
+
 static void screen_to_tile(int x, int y, int *tile_x, int *tile_y) {
-    auto relative_x = x - window_width / 2 + playfield_size * tile_size / 2;
-    auto relative_y = y - window_height / 2 + playfield_size * tile_size / 2;
+    int playfield_x;
+    int playfield_y;
+    playfield_position(&playfield_x, &playfield_y);
+
+    auto relative_x = x - playfield_x;
+    auto relative_y = y - playfield_y;
 
     *tile_x = (int)floorf((float)relative_x / tile_size);
     *tile_y = (int)floorf((float)relative_y / tile_size);
@@ -89,23 +141,18 @@ static void tile_to_screen(int tile_x, int tile_y, int *x, int *y) {
     auto relative_x = tile_x * tile_size;
     auto relative_y = tile_y * tile_size;
 
-    *x = window_width / 2 - playfield_size * tile_size / 2 + relative_x;
-    *y = window_height / 2 - playfield_size * tile_size / 2 + relative_y;
+    int playfield_x;
+    int playfield_y;
+    playfield_position(&playfield_x, &playfield_y);
+
+    *x = playfield_x + relative_x;
+    *y = playfield_y + relative_y;
 }
 
 const auto tile_inset = 2;
 
 static void draw_tile_at(int x, int y, int kind) {
-    Color color;
-    switch(kind) {
-        case 1: color = RED; break;
-        case 2: color = GREEN; break;
-        case 3: color = BLUE; break;
-        case 4: color = GOLD; break;
-        case 5: color = SKYBLUE; break;
-        case 6: color = PURPLE; break;
-        default: abort();
-    }
+    auto color = tile_color(kind);
 
     DrawRectangle(x + tile_inset, y + tile_inset, tile_size - tile_inset * 2, tile_size - tile_inset * 2, color);
 }
@@ -122,6 +169,8 @@ int main(int argument_count, const char *arguments[]) {
             tiles[y][x] = GetRandomValue(1, tile_kind_count);
         }
     }
+
+    List<Particle> particles {};
 
     auto dragging = false;
     int drag_start_mouse_x;
@@ -175,6 +224,18 @@ int main(int argument_count, const char *arguments[]) {
 
             if(falling_tiles.count == 0) {
                 falling = false;
+            }
+        }
+
+        for(size_t i = 0; i < particles.count; i += 1) {
+            auto particle = &particles[i];
+
+            if(particle->creation_time + particle->lifetime <= time) {
+                remove_at(&particles, i);
+                i -= 1;
+            } else {
+                particle->x += particle->velocity_x * delta_time;
+                particle->y += particle->velocity_y * delta_time;
             }
         }
 
@@ -242,7 +303,7 @@ int main(int argument_count, const char *arguments[]) {
                 if(to_count >= 3) {
                     points += to_count;
 
-                    delete_neighbours(tiles, drag_target_tile_x, drag_target_tile_y, from_tile_type);
+                    delete_neighbours(tiles, time, &particles, drag_target_tile_x, drag_target_tile_y, from_tile_type);
 
                     completed_groups = true;
                 }
@@ -252,7 +313,7 @@ int main(int argument_count, const char *arguments[]) {
                 if(from_count >= 3) {
                     points += from_count;
 
-                    delete_neighbours(tiles, drag_start_tile_x, drag_start_tile_y, to_tile_type);
+                    delete_neighbours(tiles, time, &particles, drag_start_tile_x, drag_start_tile_y, to_tile_type);
 
                     completed_groups = true;
                 }
@@ -414,6 +475,19 @@ int main(int argument_count, const char *arguments[]) {
 
                 draw_tile_at(screen_x, screen_y, tile.kind);
             }
+        }
+
+        for(auto particle : particles) {
+            int playfield_x;
+            int playfield_y;
+            playfield_position(&playfield_x, &playfield_y);
+
+            auto x = (int)(particle.x * tile_size + playfield_x);
+            auto y = (int)(particle.y * tile_size + playfield_y);
+
+            const auto size = tile_size / 3;
+
+            DrawRectangle(x, y, size, size, particle.color);
         }
 
         char buffer[128];
