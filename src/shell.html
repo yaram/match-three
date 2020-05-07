@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Match 3+n</title>
+  </head>
+  <body>
+    <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
+    <script type='text/javascript'>
+      var Module = {
+        print: (function(text) { console.log(text) })(),
+        printErr: function(text) { console.error(text); },
+        canvas: document.getElementById('canvas'),
+      };
+    </script>
+    {{{ SCRIPT }}}
+  </body>
+</html>
