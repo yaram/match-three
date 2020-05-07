@@ -192,7 +192,11 @@ int main(int argument_count, const char *arguments[]) {
     float falling_velocity;
     float falling_amount;
 
+    const auto displayed_points_tick_time = 0.05;
+
     auto points = 0;
+    auto displayed_points = 0;
+    auto last_displayed_points_tick = GetTime();
 
     while(!WindowShouldClose()) {
         auto time = GetTime();
@@ -204,6 +208,16 @@ int main(int argument_count, const char *arguments[]) {
         int mouse_tile_x;
         int mouse_tile_y;
         screen_to_tile(mouse_x, mouse_y, &mouse_tile_x, &mouse_tile_y);
+
+        if(last_displayed_points_tick + displayed_points_tick_time <= time) {
+            last_displayed_points_tick = time;
+
+            if(points > displayed_points) {
+                displayed_points += 1;
+            } else if(points < displayed_points) {
+                displayed_points -= 1;
+            }
+        }
 
         if(falling) {
             falling_velocity += 100.0f * delta_time;
@@ -323,6 +337,8 @@ int main(int argument_count, const char *arguments[]) {
                     falling_tiles.count = 0;
                     falling_velocity = 0;
                     falling_amount = 0;
+
+                    last_displayed_points_tick = time;
 
                     for(auto x = 0; x < playfield_size; x += 1) {
                         auto space_count = 0;
@@ -491,7 +507,7 @@ int main(int argument_count, const char *arguments[]) {
         }
 
         char buffer[128];
-        snprintf(buffer, 128, "Points: %d", points);
+        snprintf(buffer, 128, "%d", displayed_points);
 
         const auto font_size = 40;
 
