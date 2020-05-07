@@ -4,12 +4,18 @@
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Match 3+n</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
   </head>
   <body>
     <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
     <script type='text/javascript'>
       var Module = {
-        print: (function(text) { console.log(text) })(),
+        print: function(text) { console.log(text); },
         printErr: function(text) { console.error(text); },
         canvas: document.getElementById('canvas'),
       };
