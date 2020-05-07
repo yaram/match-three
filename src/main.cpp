@@ -169,6 +169,7 @@ int main(int argument_count, const char *arguments[]) {
                     tiles[tile.end_y][tile.x] = tile.kind;
 
                     remove_at(&falling_tiles, i);
+                    i -= 1;
                 }
             }
 
